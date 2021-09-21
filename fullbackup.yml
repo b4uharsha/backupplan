@@ -1,0 +1,49 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  BackupRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: AuroraBackupRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - "backup.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup"
+  BackupVault:
+    Type: "AWS::Backup::BackupVault"
+    Properties:
+      BackupVaultName: "AurorabackupVault"
+
+  BackupPlan:
+    Type: "AWS::Backup::BackupPlan"
+    Properties:
+      BackupPlan:
+        BackupPlanName: "SampleBackupVault1"
+        BackupPlanRule:
+          - RuleName: "RuleForDailyBackups"
+            TargetBackupVault: !Ref BackupVault
+            ScheduleExpression: "cron(5 * * * ? *)"
+          - RuleName: "RuleForweeklyBackups"
+            TargetBackupVault: !Ref BackupVault
+            ScheduleExpression: "cron(10 * * * ? *)"
+          - RuleName: "RuleForMontlyBackups"
+            TargetBackupVault: !Ref BackupVault
+            ScheduleExpression: "cron(15 * * * ? *)"
+
+  BackupSelection:
+    Type: "AWS::Backup::BackupSelection"
+    Properties:
+      BackupSelection:
+        SelectionName: SampleBackupSelection
+        IamRoleArn: !GetAtt BackupRole.Arn
+        ListOfTags:
+          - ConditionType: "STRINGEQUALS"
+            ConditionKey: "BackupPlan"
+            ConditionValue: "MissionCritical"
+      BackupPlanId: !Ref BackupPlan
